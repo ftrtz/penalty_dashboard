@@ -4,18 +4,29 @@ library(dplyr)
 library(heatmaply)
 
 ### load data
+# penalty shootout
+penalties_shootout <- read_excel("data/FUT Elfmeter.xlsx", sheet = "Elfmeterschießen", skip = 2) %>%
+  mutate(across(where(is.character), as.factor)) %>% 
+  group_split(`Aktiver Spieler`)
+
 # own penalties
 penalties_own <- read_excel("data/FUT Elfmeter.xlsx", sheet = "Eigene Elfmeter", skip = 2) %>%
   mutate(across(where(is.character), as.factor))
+# bind shootout and regular penalties
+penalties_own <-  bind_rows(penalties_own, penalties_shootout[2])
 # split x and y axis for shots
 penalties_own$Schuss_x <- as.factor(substr(penalties_own$Schussposition, 1,1))
 penalties_own$Schuss_y <- as.factor(substr(penalties_own$Schussposition, 2,2))
+
 # opponent penalties
 penalties_opp <- read_excel("data/FUT Elfmeter.xlsx", sheet = "Gegnerische Elfmeter", skip = 2) %>%
   mutate(across(where(is.character), as.factor))
+# bind shootout and regular penalties
+penalties_opp <-  bind_rows(penalties_opp, penalties_shootout[1])
 # split x and y axis for shots
 penalties_opp$Schuss_x <- as.factor(substr(penalties_opp$Schussposition, 1,1))
 penalties_opp$Schuss_y <- as.factor(substr(penalties_opp$Schussposition, 2,2))
+
 
 # ----------------------------------------------- FUNCTIONS -----------------------------------------------------
 
@@ -33,6 +44,10 @@ filter_all <- function(df, input){
     if(input$foot != "Alle"){
       res <- res %>% filter(Fuss == input$foot)
     }
+    if (input$shootout == "Ohne Elfmeterschießen"){
+      res <- res %>% filter(!is.na(Nr.))
+    }
+    
     res
   })
 }
@@ -111,7 +126,8 @@ ui <- fluidPage(
      h2("Datenauswahl"),
      sliderInput("time", "Spielminute", min = 0, max = 120, c(0,120), step = 5),
      selectInput("goal", label = "Tor", c("Alle", levels(penalties_own$Tor)), selected = "Alle"),
-     selectInput("foot", label = "Starker Fuss des Schuetzen", c("Alle", levels(penalties_own$Fuss)), selected = "Alle")
+     selectInput("foot", label = "Starker Fuss des Schützen", c("Alle", levels(penalties_own$Fuss)), selected = "Alle"),
+     selectInput("shootout", label = "Elfmeterschießen", c("Ohne Elfmeterschießen", "Mit Elfmeterschießen"), selected = "Ohne Elfmeterschießen")
    ),
  
    mainPanel(
